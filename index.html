@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>DebashisGuruEye — AI Vision</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon-wrap">
+        <svg viewBox="0 0 36 36" class="logo-svg" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <circle cx="18" cy="18" r="7" fill="currentColor" opacity="0.15"/>
+          <circle cx="18" cy="18" r="3.5" fill="currentColor"/>
+          <line x1="18" y1="1" x2="18" y2="9" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="18" y1="27" x2="18" y2="35" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="1" y1="18" x2="9" y2="18" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="27" y1="18" x2="35" y2="18" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="logo-text-group">
+        <span class="logo-text">DebashisGuruEye</span>
+        <span class="logo-sub">AI VISION v2.0</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-status">
+        <span id="header-status-dot" class="status-dot idle"></span>
+        <span id="header-status-label">OFFLINE</span>
+      </div>
+      <button id="voiceBtn" class="btn-voice" title="Voice: say 'What is this?'" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="8" y1="22" x2="16" y2="22"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT COLUMN -->
+    <div class="col-left">
+
+      <section class="camera-panel" id="cameraPanel">
+        <div class="hud-corner tl"></div>
+        <div class="hud-corner tr"></div>
+        <div class="hud-corner bl"></div>
+        <div class="hud-corner br"></div>
+        <div class="crosshair"><span class="ch-h"></span><span class="ch-v"></span></div>
+        <div class="scan-line" id="scanLine"></div>
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+
+        <div class="camera-placeholder" id="placeholder">
+          <div class="placeholder-rings">
+            <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+          </div>
+          <div class="placeholder-eye">👁</div>
+          <p class="placeholder-text">CAMERA INACTIVE</p>
+          <p class="placeholder-sub">Click Start Camera to begin</p>
+        </div>
+
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="loader-arc"></div>
+          <p class="loader-label" id="loaderLabel">INITIALISING AI ENGINE</p>
+          <p class="loader-sub"  id="loaderSub">Loading TensorFlow WebGL backend…</p>
+          <div class="loader-progress-track"><div class="loader-progress-fill" id="loaderProgress"></div></div>
+        </div>
+
+        <div class="snap-flash" id="snapFlash"></div>
+        <div class="live-badge" id="liveBadge"><span class="live-dot"></span> LIVE</div>
+      </section>
+
+      <div class="controls">
+        <button id="startBtn" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polygon points="5,3 19,12 5,21"/></svg>
+          Start Camera
+        </button>
+        <button id="scanBtn" class="btn-scan" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M3 9V6a2 2 0 0 1 2-2h3M3 15v3a2 2 0 0 0 2 2h3M15 3h3a2 2 0 0 1 2 2v3M15 21h3a2 2 0 0 0 2-2v-3"/>
+          </svg>
+          Scan Object
+        </button>
+        <button id="stopBtn" class="btn-stop" disabled>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+          Stop
+        </button>
+      </div>
+
+      <section class="results-panel">
+        <div class="panel-header">
+          <span class="panel-title">DETECTION FEED</span>
+          <span id="fpsDisplay" class="fps-badge">— FPS</span>
+        </div>
+        <div class="predictions" id="predictions">
+          <div class="prediction-empty">No detections yet — start the camera</div>
+        </div>
+        <div class="stats-bar">
+          <div class="stat"><span class="stat-label">OBJECTS</span><span class="stat-value" id="statCount">0</span></div>
+          <div class="stat"><span class="stat-label">TOP CONF</span><span class="stat-value" id="statConf">—</span></div>
+          <div class="stat"><span class="stat-label">BACKEND</span><span class="stat-value" id="statBackend">—</span></div>
+          <div class="stat"><span class="stat-label">MODEL</span><span class="stat-value">COCO-SSD</span></div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col-right">
+
+      <section class="side-panel" id="infoPanel">
+        <div class="panel-header">
+          <span class="panel-title">OBJECT INTEL</span>
+          <span class="panel-tag">AI</span>
+        </div>
+        <div class="info-content" id="infoContent">
+          <div class="info-empty">
+            <span class="info-empty-icon">🔍</span>
+            <p>Detect an object to see details</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="side-panel" id="historyPanel">
+        <div class="panel-header">
+          <span class="panel-title">HISTORY</span>
+          <button id="clearHistoryBtn" class="btn-clear">✕ CLEAR</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="info-empty"><p>No history yet</p></div>
+        </div>
+      </section>
+
+      <section class="side-panel snap-panel" id="snapshotPanel" style="display:none">
+        <div class="panel-header">
+          <span class="panel-title">SNAPSHOT ANALYSIS</span>
+          <button id="closeSnapshotBtn" class="btn-clear">✕</button>
+        </div>
+        <canvas id="snapCanvas"></canvas>
+        <div class="snap-results" id="snapResults"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="voice-toast" id="voiceToast">
+    <span class="voice-toast-icon">🎤</span>
+    <span id="voiceToastText">Listening…</span>
+  </div>
+
+  <footer>
+    <span>DebashisGuruEye · TensorFlow.js WebGL · COCO-SSD 80-class · 100% in-browser · No data leaves your device</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
